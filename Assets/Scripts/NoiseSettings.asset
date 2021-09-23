@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 028d47c0507cf3d49a13873de3077ba2, type: 3}
+  m_Name: NoiseSettings
+  m_EditorClassIdentifier: 
+  NumLayers: 5
+  Persistance: 0.5
+  Strength: 1
+  BaseRoughness: 1
+  Roughness: 1.61
+  Center: {x: 0, y: 0, z: 0}
+  UpperBoundary: 16
+  Ground: 0
+  LowerBoundry: -32
