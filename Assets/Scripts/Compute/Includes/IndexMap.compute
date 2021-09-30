@@ -1,0 +1,6 @@
+// flattening 3d array to 1d 
+// formula is x + (width * y) + (width * height * z)
+int Map3dIndexTo1d(int x, int y, int z, int Resolution) 
+{
+	return x + (Resolution * y) + (Resolution * Resolution * z);
+}

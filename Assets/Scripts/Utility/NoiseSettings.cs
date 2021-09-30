@@ -8,10 +8,14 @@ namespace Utility
         [Range(1,8)]
         public int NumLayers = 1;
         public float Persistance = .5f;
-        public float Strength = 1;
+        public float NoiseWeight = 2;
         public float BaseRoughness = 1;
         public float Roughness = 2;
-        public Vector3 Center;
+        public float FloorOffset;
+        public float HardFloor;
+        public float FloorWeight;
+        public float HardFloorWeight;
+        public Vector3 OffsetPoint;
         public int UpperBoundary, Ground, LowerBoundry;
     }
 }

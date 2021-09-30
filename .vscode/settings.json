@@ -51,6 +51,7 @@
         "Obj/":true,
         "Assets/Scenes":true,
         "ProjectSettings/":true,
+        "Assets/Settings":true,
         "Logs/":true,
         "Packages/":true,
         "UserSettings/":true,

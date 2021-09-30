@@ -1,136 +1,146 @@
 using System.Collections.Generic;
 using UnityEngine;
-using System;
 using Utility;
 
 namespace MeshGeneration
 {
-    [RequireComponent(typeof(MeshFilter))]
-    [RequireComponent(typeof(MeshRenderer))]
+    // [ExecuteInEditMode]
     public class Generator : MonoBehaviour
     {
-        public Cube Cube;
-        private DensityFunction densityFunction;
-        private Mesh mesh;
-        private List<Vector3> vertexes = new List<Vector3>();
-        private List<int> triangles = new List<int>();
-        [SerializeField] private DrawChunkDetails chunkDetails;
-        [SerializeField] private NoiseSettings noiseSettings;
-        [SerializeField] private int xSize, zSize;
+        private ComputeBuffer triangsBuffer;
+        private ComputeBuffer positionsBuffer;
+        // private Mesh mesh;
+        private DensityGenerator densityGenerator;
+        // private List<Vector3> vertexes = new List<Vector3>();
+        // private List<int> triangles = new List<int>();
+        private int maxResolution = 16; 
+
         [Range(.01f, 2f)]
         [SerializeField] private float marchSpeed;
-    
+        
+        [Tooltip("Number of points per axis")]
+        [Range (2, 16)]
+        [SerializeField] private int resolution = 8; 
+        [SerializeField] private float isoLevel;
+        [SerializeField] private ComputeShader cubeShader;
+        [SerializeField] private ComputeShader densityShader;
+        [SerializeField] private NoiseSettings noiseSettings;
+        [SerializeField] private Chunk chunk;
+        private struct Triangle
+        {
+            public Vector3 vert0;
+            public Vector3 vert1;
+            public Vector3 vert2;
+        }
+
         private void Awake() 
         {
-            Cube = new Cube();
-    
-            chunkDetails = gameObject.AddComponent<DrawChunkDetails>();
-            chunkDetails.cube = Cube;
-            densityFunction = new DensityFunction(noiseSettings);
+            densityGenerator = new DensityGenerator(noiseSettings, densityShader);
         }
-        private void FixedUpdate() 
+        private void Update() 
         {
-            MarchingCube(Cube);
-            // StartCoroutine(MarchingCube(Cube));
+            InitBuffers();
+            GenerateMesh(chunk);
         }
-        private void MeshStartingSetup()
+        private void OnEnable()
         {
-            GetComponent<MeshFilter>().mesh = new Mesh();
-            
-            vertexes.Clear();
-            triangles.Clear();
+            InitBuffers();
         }
-    
-        private void SetMesh(Vector3[] vert, int[] tri)
+        private void OnDisable()
         {
-            mesh = GetComponent<MeshFilter>().mesh;
-            // mesh.Clear();
-    
-            mesh.vertices = vert;
-            mesh.triangles = tri;
-    
+            ReleaseBuffers();
+        }
+        private void InitBuffers()
+        {
+            // maximum triangle configuration yields 5
+            int maxTriangleCount = resolution * resolution * resolution * 5;
+            int maxNumOfPoints = maxResolution * maxResolution * maxResolution;
+
+            // 3 positions in struct each being v3
+            triangsBuffer = new ComputeBuffer(maxTriangleCount, sizeof(float) * 3 * 3, ComputeBufferType.Append);
+
+            // just 1 vec4 meaning 4 floats
+            positionsBuffer = new ComputeBuffer(maxNumOfPoints, sizeof(float) * 4);
+        }
+        private void ReleaseBuffers()
+        {
+            triangsBuffer.Release();
+            positionsBuffer.Release();
+            triangsBuffer = null;
+            positionsBuffer = null;
+        }
+
+        // private void MeshStartingSetup() // this was called 1st at start
+        // {
+        //     GetComponent<MeshFilter>().mesh = new Mesh();
+
+        //     // vertexes.Clear();
+        //     // triangles.Clear();
+        // }
+
+        // private void SetMesh(Vector3[] vert, int[] tri) // this was called 2nd in loop
+        // {
+        //     Mesh mesh = GetComponent<MeshFilter>().mesh;
+        //     // mesh.Clear();
+
+        //     mesh.vertices = vert;
+        //     mesh.triangles = tri;
+
+        //     mesh.RecalculateNormals();
+        //     mesh.RecalculateTangents();  //if URP
+        // }
+        private void GenerateMesh(Chunk chunk)
+        {
+            densityGenerator.Generate(positionsBuffer, resolution);
+
+            triangsBuffer.SetCounterValue(0);
+            cubeShader.SetBuffer(0, "Positions", positionsBuffer);
+            cubeShader.SetBuffer(0, "Triangs", triangsBuffer);
+
+            cubeShader.SetInt("Resolution", resolution);
+            cubeShader.SetFloat("IsoLevel", isoLevel);
+
+            int numThreadsPerAxis = Mathf.CeilToInt(resolution / 8f);
+            cubeShader.Dispatch(0, numThreadsPerAxis, numThreadsPerAxis, numThreadsPerAxis);
+
+            int numOfTriangs = triangsBuffer.count;
+
+            Triangle[] triang = new Triangle[numOfTriangs];
+            triangsBuffer.GetData(triang);
+
+            Mesh mesh = chunk.mesh;
+            mesh.Clear();
+
+            CalculateVertTri(ref mesh, triang, numOfTriangs);
+
             mesh.RecalculateNormals();
-            //m.RecalculateTangents();  //if URP
+            mesh.RecalculateTangents();  // if URP
         }
-        private void MarchingCube(Cube cube)
+
+        private void CalculateVertTri(ref Mesh mesh, Triangle[] triang, int numOfTriangs)
         {
-            cube.corners = new Vector4[8];
-            MeshStartingSetup();
-            
-            for (int x = 0; x < xSize; x++)
+            // Vector3[] vertices = new Vector3[numOfTriangs * 3];
+            // int[] triangles = new int[numOfTriangs * 3];
+            List<Vector3> vertexes = new List<Vector3>();
+            List<int> triangles = new List<int>();
+
+            // for (int i = 0, j = 0; i < numOfTriangs; i++, j += 3)
+            for (int i = 0; i < numOfTriangs; i++)
             {
-                for (int y = -8; y < xSize - 8; y++)
-                {
-                    for (int z = 0; z < zSize; z++)
-                    {
-                        cube.corners[0] = new Vector3(x, y, z);
-                        cube.corners[1] = new Vector3(x, y, z) + Vector3.up;
-                        cube.corners[2] = new Vector3(x, y, z) + Vector3.up + Vector3.right;
-                        cube.corners[3] = new Vector3(x, y, z) + Vector3.right;
-                        cube.corners[4] = new Vector3(x, y, z) + Vector3.forward;
-                        cube.corners[5] = new Vector3(x, y, z) + Vector3.up + Vector3.forward;
-                        cube.corners[6] = new Vector3(x, y, z) + Vector3.up + Vector3.forward + Vector3.right;
-                        cube.corners[7] = new Vector3(x, y, z) + Vector3.forward + Vector3.right;
-    
-                        for (int i = 0; i < cube.corners.Length; i++)
-                        {
-                            cube.corners[i].w = densityFunction.PointDensity((Vector3)cube.corners[i]);
-                        }
-    
-                        MarchTheCube(cube);
-                        SetMesh(vertexes.ToArray(), triangles.ToArray());
-    
-                        // yield return new WaitForSeconds(marchSpeed);
-                    }
-                }
-            }
-            // Debug.Log("done");
-        }
-        private void MarchTheCube(Cube cube)
-        {
-            // Calculate the index of the current cube configuration
-            // the for loop maps cubeIndex to [0,255]
-            int cubeIndex = 0;
-            for (int i = 0; i < 8; i++)
-            {
-                if (cube.corners[i].w < noiseSettings.Ground)
-                {
-                    cubeIndex |= 1 << i;
-                }
-            }
-    
-            // Looping over each edge sum that make up a triangle
-            Func<int, int> edgeIndexOfTheCube = i => Table.Triangulation[cubeIndex, i];
-            for (int i = 0; edgeIndexOfTheCube(i) != -1; i += 3)
-            {
-                int cornIndexA0 = Table.CornerIndexFromEdge[edgeIndexOfTheCube(i), 0];
-                int cornIndexB0 = Table.CornerIndexFromEdge[edgeIndexOfTheCube(i), 1];
-    
-                int cornIndexA1 = Table.CornerIndexFromEdge[edgeIndexOfTheCube(i + 1), 0];
-                int cornIndexB1 = Table.CornerIndexFromEdge[edgeIndexOfTheCube(i + 1), 1];
-    
-                int cornIndexA2 = Table.CornerIndexFromEdge[edgeIndexOfTheCube(i + 2), 0];
-                int cornIndexB2 = Table.CornerIndexFromEdge[edgeIndexOfTheCube(i + 2), 1];
-    
-                Vector3[] VertexPositions = new Vector3[] {
-                    InterpolateVertecies(cube.corners[cornIndexA0], cube.corners[cornIndexB0]),
-                    InterpolateVertecies(cube.corners[cornIndexA1], cube.corners[cornIndexB1]),
-                    InterpolateVertecies(cube.corners[cornIndexA2], cube.corners[cornIndexB2]),
-                };
-    
-                vertexes.Add(VertexPositions[0]);
-                vertexes.Add(VertexPositions[1]);
-                vertexes.Add(VertexPositions[2]);
-    
+                // vertexes[j] = triang[i].vert0;
+                // vertexes[j + 1] = triang[i].vert1;
+                // vertexes[j + 2] = triang[i].vert2;
+                vertexes.Add(triang[i].vert0);
+                vertexes.Add(triang[i].vert1);
+                vertexes.Add(triang[i].vert2);
+
                 triangles.Add(vertexes.Count - 1);
                 triangles.Add(vertexes.Count - 2);
                 triangles.Add(vertexes.Count - 3);
             }
+
+            mesh.vertices = vertexes.ToArray();
+            mesh.triangles = triangles.ToArray();
         }
-        private Vector3 InterpolateVertecies(Vector4 v1, Vector4 v2)
-        {
-            float t = (noiseSettings.Ground - v1.w) / (v2.w - v1.w);
-            return (Vector3)v1 + t * ((Vector3)v2 - (Vector3)v1);
-        }
-}
+    }
 }

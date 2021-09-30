@@ -1,0 +1,83 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+#include "/Includes/MarchTables.compute"
+
+struct Triangle
+{
+    float3 vert0;
+    float3 vert1;
+    float3 vert2;
+};
+
+AppendStructuredBuffer<Triangle> Triangs;
+RWStructuredBuffer<float4> Positions;
+
+float IsoLevel;
+int Resolution;
+
+int Map3dIndexTo1d(int x, int y, int z) 
+{
+	return x + (Resolution * y) + (Resolution * Resolution * z);
+}
+float3 InterpolateVertecies(float4 v1, float4 v2)
+{
+    float3 p;
+    float mu = (IsoLevel - v1.w) / (v2.w - v1.w);
+
+    p.x = v1.x + mu * (v2.x - v1.x);
+    p.y = v1.y + mu * (v2.y - v1.y);
+    p.z = v1.z + mu * (v2.z - v1.z);
+    return p;
+}
+[numthreads(8,8,8)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= Resolution-1 || id.y >= Resolution-1 || id.z >= Resolution-1) 
+    {
+        return;
+    }
+
+    float4 cubeCorners[8] = {
+        Positions[Map3dIndexTo1d(id.x, id.y, id.z)],
+        Positions[Map3dIndexTo1d(id.x, id.y + 1, id.z)],
+        Positions[Map3dIndexTo1d(id.x + 1, id.y + 1, id.z)],
+        Positions[Map3dIndexTo1d(id.x + 1, id.y, id.z)],
+        Positions[Map3dIndexTo1d(id.x, id.y, id.z + 1)],
+        Positions[Map3dIndexTo1d(id.x, id.y + 1, id.z + 1)],
+        Positions[Map3dIndexTo1d(id.x + 1, id.y + 1, id.z + 1)],
+        Positions[Map3dIndexTo1d(id.x + 1, id.y, id.z + 1)],
+    };
+
+    int cubeIndex = 0;
+    if (cubeCorners[0].w < IsoLevel) cubeIndex |= 1;
+    if (cubeCorners[1].w < IsoLevel) cubeIndex |= 2;
+    if (cubeCorners[2].w < IsoLevel) cubeIndex |= 4;
+    if (cubeCorners[3].w < IsoLevel) cubeIndex |= 8;
+    if (cubeCorners[4].w < IsoLevel) cubeIndex |= 16;
+    if (cubeCorners[5].w < IsoLevel) cubeIndex |= 32;
+    if (cubeCorners[6].w < IsoLevel) cubeIndex |= 64;
+    if (cubeCorners[7].w < IsoLevel) cubeIndex |= 128;
+
+    for (int i = 0; triTable[cubeIndex][i] != -1; i += 3) 
+    {
+        // Get indices of corner points A and B for each of the three edges
+        // of the cube that need to be joined to form the triangle.
+        int cornIndexA0 = cornerIndexAFromEdge[triTable[cubeIndex][i]];
+        int cornIndexB0 = cornerIndexBFromEdge[triTable[cubeIndex][i]];
+
+        int cornIndexA1 = cornerIndexAFromEdge[triTable[cubeIndex][i+1]];
+        int cornIndexB1 = cornerIndexBFromEdge[triTable[cubeIndex][i+1]];
+
+        int cornIndexA2 = cornerIndexAFromEdge[triTable[cubeIndex][i+2]];
+        int cornIndexB2 = cornerIndexBFromEdge[triTable[cubeIndex][i+2]];
+
+        Triangle tri;
+
+        tri.vert0 = InterpolateVertecies(cubeCorners[cornIndexA0], cubeCorners[cornIndexB0]);
+        tri.vert1 = InterpolateVertecies(cubeCorners[cornIndexA1], cubeCorners[cornIndexB1]);
+        tri.vert2 = InterpolateVertecies(cubeCorners[cornIndexA2], cubeCorners[cornIndexB2]);
+        
+        Triangs.Append(tri);
+    }
+}
