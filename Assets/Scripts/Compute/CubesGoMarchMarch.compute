@@ -31,7 +31,7 @@ float3 InterpolateVertecies(float4 v1, float4 v2)
     return p;
 }
 [numthreads(8,8,8)]
-void CSMain (uint3 id : SV_DispatchThreadID)
+void CSMain (int3 id : SV_DispatchThreadID)
 {
     if (id.x >= Resolution-1 || id.y >= Resolution-1 || id.z >= Resolution-1) 
     {
@@ -49,6 +49,8 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         Positions[Map3dIndexTo1d(id.x + 1, id.y, id.z + 1)],
     };
 
+    // Calculate the index of the current cube configuration
+    // maps cubeIndex to [0,255]
     int cubeIndex = 0;
     if (cubeCorners[0].w < IsoLevel) cubeIndex |= 1;
     if (cubeCorners[1].w < IsoLevel) cubeIndex |= 2;
@@ -59,18 +61,17 @@ void CSMain (uint3 id : SV_DispatchThreadID)
     if (cubeCorners[6].w < IsoLevel) cubeIndex |= 64;
     if (cubeCorners[7].w < IsoLevel) cubeIndex |= 128;
 
+    // Looping over each edge sum that make up a triangle
     for (int i = 0; triTable[cubeIndex][i] != -1; i += 3) 
     {
-        // Get indices of corner points A and B for each of the three edges
-        // of the cube that need to be joined to form the triangle.
         int cornIndexA0 = cornerIndexAFromEdge[triTable[cubeIndex][i]];
         int cornIndexB0 = cornerIndexBFromEdge[triTable[cubeIndex][i]];
 
-        int cornIndexA1 = cornerIndexAFromEdge[triTable[cubeIndex][i+1]];
-        int cornIndexB1 = cornerIndexBFromEdge[triTable[cubeIndex][i+1]];
+        int cornIndexA1 = cornerIndexAFromEdge[triTable[cubeIndex][i + 1]];
+        int cornIndexB1 = cornerIndexBFromEdge[triTable[cubeIndex][i + 1]];
 
-        int cornIndexA2 = cornerIndexAFromEdge[triTable[cubeIndex][i+2]];
-        int cornIndexB2 = cornerIndexBFromEdge[triTable[cubeIndex][i+2]];
+        int cornIndexA2 = cornerIndexAFromEdge[triTable[cubeIndex][i + 2]];
+        int cornIndexB2 = cornerIndexBFromEdge[triTable[cubeIndex][i + 2]];
 
         Triangle tri;
 

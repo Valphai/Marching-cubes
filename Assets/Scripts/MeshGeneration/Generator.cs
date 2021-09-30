@@ -9,10 +9,7 @@ namespace MeshGeneration
     {
         private ComputeBuffer triangsBuffer;
         private ComputeBuffer positionsBuffer;
-        // private Mesh mesh;
         private DensityGenerator densityGenerator;
-        // private List<Vector3> vertexes = new List<Vector3>();
-        // private List<int> triangles = new List<int>();
         private int maxResolution = 16; 
 
         [Range(.01f, 2f)]
@@ -69,26 +66,6 @@ namespace MeshGeneration
             triangsBuffer = null;
             positionsBuffer = null;
         }
-
-        // private void MeshStartingSetup() // this was called 1st at start
-        // {
-        //     GetComponent<MeshFilter>().mesh = new Mesh();
-
-        //     // vertexes.Clear();
-        //     // triangles.Clear();
-        // }
-
-        // private void SetMesh(Vector3[] vert, int[] tri) // this was called 2nd in loop
-        // {
-        //     Mesh mesh = GetComponent<MeshFilter>().mesh;
-        //     // mesh.Clear();
-
-        //     mesh.vertices = vert;
-        //     mesh.triangles = tri;
-
-        //     mesh.RecalculateNormals();
-        //     mesh.RecalculateTangents();  //if URP
-        // }
         private void GenerateMesh(Chunk chunk)
         {
             densityGenerator.Generate(positionsBuffer, resolution);
@@ -119,17 +96,11 @@ namespace MeshGeneration
 
         private void CalculateVertTri(ref Mesh mesh, Triangle[] triang, int numOfTriangs)
         {
-            // Vector3[] vertices = new Vector3[numOfTriangs * 3];
-            // int[] triangles = new int[numOfTriangs * 3];
             List<Vector3> vertexes = new List<Vector3>();
             List<int> triangles = new List<int>();
 
-            // for (int i = 0, j = 0; i < numOfTriangs; i++, j += 3)
             for (int i = 0; i < numOfTriangs; i++)
             {
-                // vertexes[j] = triang[i].vert0;
-                // vertexes[j + 1] = triang[i].vert1;
-                // vertexes[j + 2] = triang[i].vert2;
                 vertexes.Add(triang[i].vert0);
                 vertexes.Add(triang[i].vert1);
                 vertexes.Add(triang[i].vert2);

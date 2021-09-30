@@ -16,6 +16,5 @@ namespace Utility
         public float FloorWeight;
         public float HardFloorWeight;
         public Vector3 OffsetPoint;
-        public int UpperBoundary, Ground, LowerBoundry;
     }
 }
