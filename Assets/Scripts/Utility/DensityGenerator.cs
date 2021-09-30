@@ -12,11 +12,12 @@ namespace Utility
             this.settings = settings;
             this.densityShader = densityShader;
         }
-        public void Generate(ComputeBuffer positionsBuffer, int resolution)
+        public void Generate(ComputeBuffer positionsBuffer, int resolution, Vector3 chunkCenter)
         {
             densityShader.SetBuffer(0, "Positions", positionsBuffer);
             densityShader.SetInt("Resolution", resolution);
             densityShader.SetVector("OffsetPoint", settings.OffsetPoint);
+            densityShader.SetVector("ChunkCenter", chunkCenter);
 
             densityShader.SetInt("NumLayers", settings.NumLayers);
             densityShader.SetFloat("NoiseWeight", settings.NoiseWeight);

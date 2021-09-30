@@ -33,7 +33,8 @@ float3 InterpolateVertecies(float4 v1, float4 v2)
 [numthreads(8,8,8)]
 void CSMain (int3 id : SV_DispatchThreadID)
 {
-    if (id.x >= Resolution-1 || id.y >= Resolution-1 || id.z >= Resolution-1) 
+    // Stop reocurring problem with ends of chunks being connected
+    if (id.x >= Resolution - 1 || id.y >= Resolution - 1 || id.z >= Resolution - 1) 
     {
         return;
     }

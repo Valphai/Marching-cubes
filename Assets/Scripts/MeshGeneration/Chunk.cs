@@ -9,14 +9,17 @@ namespace MeshGeneration
     {
         [HideInInspector]
         public Mesh mesh;
+        
+        [HideInInspector]
+        public Vector3 ChunkCenterPosition;
+
         [HideInInspector]
         public static List<Chunk> chunks = new List<Chunk>();
         private MeshFilter meshFilter;
         private MeshRenderer meshRenderer;
-        [SerializeField] private Material material;
 
         private void Awake() => chunks.Add(this);
-        private void OnEnable() 
+        public void InitChunk(Material material) 
         {
             meshFilter = GetComponent<MeshFilter>();
             meshRenderer = GetComponent<MeshRenderer>();

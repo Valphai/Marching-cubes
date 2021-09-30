@@ -5,6 +5,7 @@
 
 RWStructuredBuffer<float4> Positions;
 float3 OffsetPoint;
+float3 ChunkCenter;
 
 int Resolution;
 
@@ -27,30 +28,28 @@ int Map3dIndexTo1d(int x, int y, int z)
 [numthreads(8,8,8)]
 void PositionDensity(uint3 id : SV_DispatchThreadID)
 {
-    // float density = -id.y;
-    
+    // calculate density at chunk position
+    float3 chunkPosition = ChunkCenter + id;
+
     // Layered noise
     float noise = 0;
     float frequency = BaseRoughness;
     float amplitude = 1;
-    float weight = 1;
 
     for (int i = 0; i < NumLayers; i++)
     {
-        float simplex = SimplexNoise(id.xyz * frequency + OffsetPoint);
-        float v = 1-abs(simplex); // making sure domain is [-1,1] -> [0,1] ?
-        v *= v;
-        v *= weight;
+        float simplex = SimplexNoise(chunkPosition * frequency + OffsetPoint);
+        float v = (1-sin(simplex)) * (1-sin(simplex)); // making it more spiky
         noise += v * amplitude;
         frequency *= Roughness;
         amplitude *= Persistance;
     }
-    float density = -(id.y + FloorOffset) + noise * NoiseWeight;
+    float density = -(chunkPosition.y + FloorOffset) + noise * NoiseWeight;
 
     if (id.y + FloorOffset < HardFloor) {
         density += HardFloorWeight;
     }
 
     int indx = Map3dIndexTo1d(id.x, id.y, id.z);
-    Positions[indx] = float4(id, density);
+    Positions[indx] = float4(chunkPosition, density);
 }

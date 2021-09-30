@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Utility;
@@ -12,8 +13,7 @@ namespace MeshGeneration
         private DensityGenerator densityGenerator;
         private int maxResolution = 16; 
 
-        [Range(.01f, 2f)]
-        [SerializeField] private float marchSpeed;
+        [SerializeField] private Vector3Int numberOfChunks;
         
         [Tooltip("Number of points per axis")]
         [Range (2, 16)]
@@ -22,7 +22,8 @@ namespace MeshGeneration
         [SerializeField] private ComputeShader cubeShader;
         [SerializeField] private ComputeShader densityShader;
         [SerializeField] private NoiseSettings noiseSettings;
-        [SerializeField] private Chunk chunk;
+        [SerializeField] private Material chunkMaterial;
+
         private struct Triangle
         {
             public Vector3 vert0;
@@ -34,11 +35,31 @@ namespace MeshGeneration
         {
             densityGenerator = new DensityGenerator(noiseSettings, densityShader);
         }
-        private void Update() 
+        private void Update()
         {
             InitBuffers();
-            GenerateMesh(chunk);
+            InitChunks();
+            RemoveUnnecessaryChunks();
         }
+
+        private void RemoveUnnecessaryChunks()
+        {
+            Vector3Int oldPosition = new Vector3Int(numberOfChunks.x * (resolution - 1), 
+                                                    numberOfChunks.y * (resolution - 1), 
+                                                    numberOfChunks.z * (resolution - 1));
+
+            for (int i = 0; i < Chunk.chunks.Count; i++)
+            {
+                if (Chunk.chunks[i].ChunkCenterPosition.x > oldPosition.x || 
+                    Chunk.chunks[i].ChunkCenterPosition.y > oldPosition.y || 
+                    Chunk.chunks[i].ChunkCenterPosition.z > oldPosition.z)
+                {
+                    Destroy(Chunk.chunks[i].gameObject);
+                    Chunk.chunks.RemoveAt(i);
+                }
+            }
+        }
+
         private void OnEnable()
         {
             InitBuffers();
@@ -47,6 +68,46 @@ namespace MeshGeneration
         {
             ReleaseBuffers();
         }
+        private void InitChunks()
+        {
+            MakeNewChunks();
+            foreach (Chunk chunk in Chunk.chunks)
+            {
+                GenerateMesh(chunk);
+            }
+        }
+
+        private void MakeNewChunks()
+        {
+            for (int x = 0; x <= numberOfChunks.x; x++)
+            {
+                for (int y = 0; y <= numberOfChunks.y; y++)
+                {
+                    for (int z = 0; z <= numberOfChunks.z; z++)
+                    {
+                        bool exists = false;
+                        Vector3Int newPosition = new Vector3Int(x * (resolution - 1), y * (resolution - 1), z * (resolution - 1));
+                        for (int i = 0; i < Chunk.chunks.Count; i++)
+                        {
+                            if (Chunk.chunks[i].ChunkCenterPosition == newPosition)
+                            {
+                                exists = true;
+                                break;
+                            }
+                        }
+
+                        if (!exists || Chunk.chunks.Count == 0)
+                        {
+                            GameObject chunkObj = new GameObject();
+                            Chunk chunk = chunkObj.AddComponent<Chunk>();
+                            chunk.ChunkCenterPosition = newPosition;
+                            chunk.InitChunk(chunkMaterial);
+                        }
+                    }
+                }
+            }
+        }
+
         private void InitBuffers()
         {
             // maximum triangle configuration yields 5
@@ -68,7 +129,7 @@ namespace MeshGeneration
         }
         private void GenerateMesh(Chunk chunk)
         {
-            densityGenerator.Generate(positionsBuffer, resolution);
+            densityGenerator.Generate(positionsBuffer, resolution, chunk.ChunkCenterPosition);
 
             triangsBuffer.SetCounterValue(0);
             cubeShader.SetBuffer(0, "Positions", positionsBuffer);

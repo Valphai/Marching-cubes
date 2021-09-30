@@ -12,12 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 028d47c0507cf3d49a13873de3077ba2, type: 3}
   m_Name: NoiseSettings
   m_EditorClassIdentifier: 
-  NumLayers: 5
+  NumLayers: 6
   Persistance: 0.5
-  Strength: 1
-  BaseRoughness: 1
-  Roughness: 1.61
-  Center: {x: 0, y: 0, z: 0}
-  UpperBoundary: 16
-  Ground: 0
-  LowerBoundry: -32
+  NoiseWeight: 2
+  BaseRoughness: 0.1
+  Roughness: 2.32
+  FloorOffset: 0
+  HardFloor: 0.4
+  FloorWeight: 3
+  HardFloorWeight: 10
+  OffsetPoint: {x: 1.06, y: 0, z: -2.97}
