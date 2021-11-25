@@ -1,8 +1,8 @@
 # Marching-cubes
 
-Implementation of the marching cubes algorithm in Unity3d. I utilized HLSL and Compute Buffers to run this algorithm on the gpu.
+Implementation of the marching cubes algorithm in Unity3d. I utilized HLSL and Compute Buffers to run this algorithm on the gpu. I also used a very simple shader graph with gradient to simulate terrain-like effect. This makes it look like an actual procedural terrain.
 
-Triangulation table from the first reference link was used in this implementation.
+Triangulation table from the first reference link was used in this implementation. 
 
 # Preview 
 
